@@ -3,6 +3,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from datetime import datetime
+import os
 
 # Function to initialize WebDriver
 def start_driver():
@@ -172,13 +173,15 @@ def search_flights(driver, departure = "DEL", destination = "BOM", date_string =
         wait.until(EC.visibility_of_element_located((By.XPATH, "//div[starts-with(@id,'flight-card-')]")))
         flight_results = driver.find_elements(By.XPATH, "//div[starts-with(@id,'flight-card-')]")
         print(f"count of flights found - {len(flight_results)}")
+        os.makedirs("screenshots", exist_ok=True)
         result = []
         for i in range(len(flight_results)):
             price = driver.find_element(By.XPATH, f"//div[starts-with(@id,'flight-card-{i}')]//descendant::div[@data-testid='flight_card_price_main_price']").text
             carrier = driver.find_elements(By.XPATH, "//div[contains(@class,'jtOMN')]")[i].text
-            wait.until(lambda driver: len(driver.find_elements(By.XPATH, "//div[contains(@class,'VsqoD')]"))>=(2*i))
+            assert wait.until(lambda driver: len(driver.find_elements(By.XPATH, "//div[contains(@class,'VsqoD')]"))>=(2*i))
             departure_time = driver.find_elements(By.XPATH, "//div[contains(@class,'VsqoD')]")[2*i].text
             destination_time = driver.find_elements(By.XPATH, "//div[contains(@class,'VsqoD')]")[2*i + 1].text
+            assert wait.until(lambda driver: len(driver.find_elements(By.XPATH, "//div[contains(@class,'wZzxo styles')]"))>=(2*i))
             departure_city_date = driver.find_elements(By.XPATH, "//div[contains(@class,'wZzxo styles')]")[2*i].text
             destination_city_date = driver.find_elements(By.XPATH, "//div[contains(@class,'wZzxo styles')]")[2*i + 1].text
             departure_airport = departure_city_date.split('·')[0].strip(' ')
@@ -189,6 +192,9 @@ def search_flights(driver, departure = "DEL", destination = "BOM", date_string =
             duration = driver.find_elements(By.XPATH, "//div[contains(@class,'e8JzK')]")[i].text
             result.append({'price':price, 'carrier':carrier, 'departure_time':departure_time, 'destination_time':destination_time, 'departure_airport':departure_airport,
                     'destination_airport':destination_airport, 'departure_date':departure_date, 'destination_date':destination_date, 'stops':stops, 'duration':duration})
+            # Also capturing screenshots for further reference
+            flight_results[i].screenshot(f'screenshots/flight_card_{i}.jpg')
+            print(f"Screenshot saved at - screenshots/flight_card_{i}.jpg")
             # Ignore below code - it works with ubuntu edge browser
             # carrier = driver.find_element(By.XPATH, f"//div[starts-with(@id,'flight-card-{i}')]//descendant::div[@data-testid='flight_card_carrier_0']").text
             # departure_time = driver.find_element(By.XPATH, f"//div[starts-with(@id,'flight-card-{i}')]//descendant::div[@data-testid='flight_card_segment_departure_time_0']").text
