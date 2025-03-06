@@ -1,3 +1,5 @@
+import time
+
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium import webdriver
@@ -105,10 +107,19 @@ def fill_travellers(driver, adults = 1):
     wait.until(lambda driver: travellers.get_attribute('aria-expanded') == 'false')
 
 
+def wait_for_visible_elements(driver, xpath, min_count):
+    # Find the elements matching the XPath
+    elements = driver.find_elements(By.XPATH, xpath)
+
+    # Filter the elements to ensure they are visible
+    visible_elements = [element for element in elements if element.is_displayed()]
+
+    # Check if the number of visible elements meets the minimum required count
+    return len(visible_elements) >= min_count
 
 # Function to search flights
 def search_flights(driver, departure = "DEL", destination = "BOM", date_string = None):
-    wait = WebDriverWait(driver, timeout=10)
+    wait = WebDriverWait(driver, timeout=15)
     if not date_string:
         travel_date = datetime.today().date()
         date_string = datetime.strftime(travel_date, '%Y-%m-%d')
@@ -171,6 +182,7 @@ def search_flights(driver, departure = "DEL", destination = "BOM", date_string =
     # Verify results
     try:
         wait.until(EC.visibility_of_element_located((By.XPATH, "//div[starts-with(@id,'flight-card-')]")))
+        time.sleep(2)
         flight_results = driver.find_elements(By.XPATH, "//div[starts-with(@id,'flight-card-')]")
         print(f"count of flights found - {len(flight_results)}")
         os.makedirs("screenshots", exist_ok=True)
@@ -181,7 +193,7 @@ def search_flights(driver, departure = "DEL", destination = "BOM", date_string =
             assert wait.until(lambda driver: len(driver.find_elements(By.XPATH, "//div[contains(@class,'VsqoD')]"))>=(2*i))
             departure_time = driver.find_elements(By.XPATH, "//div[contains(@class,'VsqoD')]")[2*i].text
             destination_time = driver.find_elements(By.XPATH, "//div[contains(@class,'VsqoD')]")[2*i + 1].text
-            assert wait.until(lambda driver: len(driver.find_elements(By.XPATH, "//div[contains(@class,'wZzxo styles')]"))>=(2*i))
+
             departure_city_date = driver.find_elements(By.XPATH, "//div[contains(@class,'wZzxo styles')]")[2*i].text
             destination_city_date = driver.find_elements(By.XPATH, "//div[contains(@class,'wZzxo styles')]")[2*i + 1].text
             departure_airport = departure_city_date.split('·')[0].strip(' ')
@@ -218,10 +230,14 @@ def search_flights(driver, departure = "DEL", destination = "BOM", date_string =
         error = f"No flights found for {departure} to {destination} on {travel_date}"
         driver.quit()
         print("driver closed")
-        result['error'] = error
-        result['Success'] = False
-        return result
+        return {'error' : error, 'Success' : False}
 
+def test_flakyness(iterations = 5):
+    for i in range(iterations):
+        driver = start_driver()
+        result = search_flights(driver)
+        if not result['Success']:
+            print(f"Flakyness test failed in {i+1}th iteration")
 
 
 # Main execution
@@ -230,7 +246,6 @@ if __name__ == "__main__":
     driver = start_driver()
     assert driver, "WEBDRIVER is not started"
     print("webdriver started successfully")
-
     result = search_flights(driver)
 
     # Test Case 1: Search valid flights (DEL to BOM, Today)
@@ -244,3 +259,4 @@ if __name__ == "__main__":
 
     assert result['Success'], f"Failed due to error - {result['error']}"
     print(f"result - {result['result']}")
+
